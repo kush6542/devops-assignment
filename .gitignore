@@ -1,0 +1,20 @@
+# python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+venv/
+.venv/
+
+# local data
+*.db
+
+# os / editor / tooling
+.DS_Store
+.idea/
+.vscode/
+.isaac/
+
+# course material (not part of the deliverable)
+assignment/

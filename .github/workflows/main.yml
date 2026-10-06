@@ -1,10 +1,9 @@
 name: ACEest CI CD Pipeline
 
+# run on every push and every pull request, any branch
 on:
   push:
-    branches: [ "main", "master" ]
   pull_request:
-    branches: [ "main", "master" ]
 
 jobs:
   build-and-lint:
@@ -17,22 +16,25 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: pip
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Compile check
+        run: python -m py_compile app.py
 
       - name: Check syntax and lint
         run: |
-          # checking critical syntax errors
+          # fail on syntax errors / undefined names
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit zero so warnings dont block build
+          # exit zero so style warnings dont block build
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
       - name: Run Pytest on runner
-        run: |
-          pytest tests/ -v
+        run: pytest tests/ -v --cov=app --cov-report=term-missing
 
   docker-build-test:
     needs: build-and-lint
@@ -41,10 +43,21 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: |
-          docker build -t aceest-fitness-app:${{ github.sha }} .
+      - name: Build test image
+        run: docker build --target test -t aceest-fitness-app:test-${{ github.sha }} .
 
       - name: Run tests inside the docker container
+        run: docker run --rm aceest-fitness-app:test-${{ github.sha }}
+
+      - name: Build runtime image
+        run: docker build --target runtime -t aceest-fitness-app:${{ github.sha }} .
+
+      - name: Smoke test runtime container
         run: |
-          docker run --rm aceest-fitness-app:${{ github.sha }} pytest tests/ -v
+          docker run -d --name aceest -p 5000:5000 aceest-fitness-app:${{ github.sha }}
+          for i in $(seq 1 10); do
+            curl -fs http://localhost:5000/ && exit 0
+            sleep 2
+          done
+          docker logs aceest
+          exit 1

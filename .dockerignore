@@ -1,6 +1,16 @@
 .git
+.github
+.gitignore
+.dockerignore
+.isaac
+.DS_Store
 __pycache__
 *.pyc
 *.db
 .pytest_cache
+.coverage
 venv/
+.venv/
+assignment/
+Jenkinsfile
+README.md
